@@ -1,0 +1,22 @@
+diff --git a/3rdparty/pyotherside.pri b/3rdparty/pyotherside.pri
+index 6e784f70..44784ce8 100644
+--- a/3rdparty/pyotherside.pri
++++ b/3rdparty/pyotherside.pri
+@@ -1,12 +1,12 @@
+ 
+ # Python
+-PY_VERSION="39"
+-PY_WIN_VERSION="38"
+-PY_LIB_SUFFIX="3.9"
++PY_VERSION="310"
++PY_WIN_VERSION="310"
++PY_LIB_SUFFIX="3.10"
+ 
+ win32* {
+-    QMAKE_LIBS += -LC:\Python$${PY_WIN_VERSION}-x64\libs -lpython$${PY_WIN_VERSION}
+-    INCLUDEPATH += C:\Python$${PY_WIN_VERSION}-x64\include\
++    QMAKE_LIBS += -L"C:/hostedtoolcache/windows/Python/3.10.4/x64/libs" -lpython$${PY_WIN_VERSION}
++    INCLUDEPATH += "C:/hostedtoolcache/windows/Python/3.10.4/x64/include/"
+ } else {
+     unix:macx {
+       exists($$PWD/python-3) {

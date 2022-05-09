@@ -1,0 +1,211 @@
+name: Run build
+
+env:
+  APP_NAME:       resp
+  GIT_REF:        2022.3
+  QT_VERSION:     5.15.2
+
+  # QT_ARCH:        win64_msvc2019_64
+  # QT_ARCH_PATH:   msvc2019_64
+  # BUILD_TYPE:     Release
+  # BUILD_ARCH:     x64
+  # BUILD_TARGET:   Visual Studio 16 2019
+
+on:
+  push:
+    tags:
+      - "*"
+    branches:
+    - main
+
+jobs:
+  build:
+    if: contains(github.ref, 'tags')
+    strategy:
+      matrix:
+        os: [windows-latest]
+        BUILD_TARGET: ['Visual Studio 16 2019', 'Visual Studio 17 2022']
+        include:
+          - os: windows-latest
+            label: windows-vs2019
+            QT_ARCH: win64_msvc2019_64
+            QT_ARCH_PATH: msvc2019_64
+            BUILD_TYPE: Release
+            BUILD_ARCH: x64
+            BUILD_TARGET: 'Visual Studio 16 2019'
+          - os: windows-latest
+            label: windows-vs2022
+            QT_ARCH: win64_msvc2019_64
+            QT_ARCH_PATH: msvc2019_64
+            BUILD_TYPE: Release
+            BUILD_ARCH: x64
+            BUILD_TARGET: 'Visual Studio 17 2022'
+    runs-on: windows-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2.3.4
+      with:
+        submodules: 'recursive'
+
+    # do not use cache here, the qt installation will install python 3.10 too.
+    # - name: Cache Qt
+    #   id: cache-qt
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: ${{github.workspace}}/Qt
+    #     key: ${{ runner.os }}-QtCache
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
+      # if: steps.cache-qt.outputs.cache-hit != 'true'
+      with:
+        version: ${{ env.QT_VERSION }}
+        arch: ${{ matrix.QT_ARCH }}
+        dir: ${{github.workspace}}
+        modules: qtcharts
+    - name: Install jom
+      # if: steps.cache-qt.outputs.cache-hit != 'true'
+      run: |
+          C:\msys64\usr\bin\wget.exe -q https://download.qt.io/official_releases/jom/jom.zip
+          dir ${{github.workspace}}\Qt\${{ env.QT_VERSION }}\${{ matrix.QT_ARCH_PATH }}\bin
+          # sample path like D:\apps\qt\5.15.2\msvc2019_64\bin\
+          unzip jom.zip -d ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin
+          dir
+          dir ${{github.workspace}}\Qt\${{ env.QT_VERSION }}\${{ matrix.QT_ARCH_PATH }}\bin
+
+    - name: Fix qt path not append, cmd
+      run: |
+          echo ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin >> %GITHUB_PATH%
+          echo %GITHUB_PATH%
+          cat %GITHUB_PATH%
+      shell: cmd
+    - name: Fix qt path not append, powershell default
+      run: |
+          echo ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          echo $env:GITHUB_PATH
+          cat $env:GITHUB_PATH
+    - name: Check toolchains
+      continue-on-error: true
+      run: |
+          echo %path%
+          where python
+          where python*.dll
+          python -V
+          where jom qmake windeployqt 
+      shell: cmd
+
+    - name: 'Set up Visual C Build Tools Workload for Visual Studio 2019 Build Tools on Windows'
+      if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 16 2019'
+      run: |
+        choco install -y visualstudio2019community visualstudio2019buildtools visualstudio2019-workload-vctools visualstudio2019-workload-nativedesktop
+    - name: Test vs 2019 
+      if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 16 2019'
+      run: |
+          npm i tree-node-cli -g
+          treee "C:\Program Files (x86)\Microsoft Visual Studio\"
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+          set
+          where cl msbuild
+      shell: cmd
+    - name: Test vs 2022 Enterprise builtin
+      if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 17 2022'
+      run: |
+          set
+          npm i tree-node-cli -g
+          treee "C:\Program Files\Microsoft Visual Studio"
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          set
+          where cl msbuild
+      shell: cmd
+
+    - name: Patch pyotherside.patch
+      run: |
+          git apply .github/pyotherside.patch
+          git diff 3rdparty/pyotherside.pri
+    - name: Patch hiredis
+      run: |
+          cd 3rdparty/qredisclient/3rdparty/hiredis
+          git apply ../hiredis-win.patch
+    # see more details on the following links
+    # https://docs.rdm.dev/en/latest/install/#build-on-windows
+    # https://github.com/uglide/RedisDesktopManager/issues/5194
+    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2022-Readme.md
+    - name: Install zlib
+      run: |
+          cd 3rdparty
+          nuget install zlib-msvc14-${{ matrix.BUILD_ARCH }} -Version 1.2.11.7795
+    - name: Build lz4
+      run: |
+          cd 3rdparty/lz4/build/cmake
+          cmake -DLZ4_BUNDLED_MODE=ON -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake --build . --config ${{ matrix.BUILD_TYPE }}
+    - name: Build snappy
+      run: |
+          cd 3rdparty/snappy
+          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake --build . --config ${{ matrix.BUILD_TYPE }}
+    - name: Build zstd
+      run: |
+          cd 3rdparty/zstd/build/cmake
+          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake --build . --config ${{ matrix.BUILD_TYPE }}
+    - name: Build brotli
+      run: |
+          cd 3rdparty/brotli
+          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake --build . --config ${{ matrix.BUILD_TYPE }}
+
+    - name: Build resp on visualstudio2019community
+      if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 16 2019'
+      run: |
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+          mkdir dist
+          cd dist
+          set
+          qmake ../src/resp.pro -spec win32-msvc "CONFIG+=qtquickcompiler"
+          jom /X Build.log -f Makefile.${{ matrix.BUILD_TYPE }}
+          cat Build.log 
+          dir ..\bin\windows\${{ matrix.BUILD_TYPE }}
+      shell: cmd
+    - name: Build resp on visualstudio2022enterprise builtin
+      if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 17 2022'
+      run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          mkdir dist
+          cd dist
+          set
+          qmake ../src/resp.pro -spec win32-msvc "CONFIG+=qtquickcompiler"
+          jom /X Build.log -f Makefile.${{ matrix.BUILD_TYPE }}
+          cat Build.log 
+          dir ..\bin\windows\${{ matrix.BUILD_TYPE }}
+      shell: cmd
+
+    - name: Add Dependences
+      run: |
+          dir bin\windows
+          dir bin\windows\${{ matrix.BUILD_TYPE }}
+          windeployqt bin/windows/${{ matrix.BUILD_TYPE }}/resp.exe --qmldir src/qml
+          dir bin\windows\${{ matrix.BUILD_TYPE }}
+          copy C:\hostedtoolcache\windows\Python\3.10.4\x64\python310.dll bin\windows\${{ matrix.BUILD_TYPE }}
+      shell: cmd
+
+    - name: Prepare release files on ${{matrix.label}}
+      continue-on-error: true
+      if: matrix.os == 'windows-latest'
+      run: |
+        7z a -tzip ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.QT_ARCH }}-${{ matrix.BUILD_ARCH }}.zip ./bin/windows/${{ matrix.BUILD_TYPE }}/*
+      shell: bash
+    - name: Display structure of build files
+      run: |
+        ls -l .
+      shell: bash
+    - name: 'Publish binary to release'
+      continue-on-error: true
+      uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      with:
+        file: ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.QT_ARCH }}-${{ matrix.BUILD_ARCH }}.zip
+        tags: true
+        draft: false
+        overwrite: true
