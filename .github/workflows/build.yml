@@ -27,14 +27,14 @@ jobs:
         BUILD_TARGET: ['Visual Studio 16 2019', 'Visual Studio 17 2022']
         include:
           - os: windows-latest
-            label: windows-vs2019
+            label: win64_msvc2019_64
             QT_ARCH: win64_msvc2019_64
             QT_ARCH_PATH: msvc2019_64
             BUILD_TYPE: Release
             BUILD_ARCH: x64
             BUILD_TARGET: 'Visual Studio 16 2019'
           - os: windows-latest
-            label: windows-vs2022
+            label: win64_msvc2022_64
             QT_ARCH: win64_msvc2019_64
             QT_ARCH_PATH: msvc2019_64
             BUILD_TYPE: Release
@@ -193,7 +193,7 @@ jobs:
       continue-on-error: true
       if: matrix.os == 'windows-latest'
       run: |
-        7z a -tzip ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.QT_ARCH }}-${{ matrix.BUILD_ARCH }}.zip ./bin/windows/${{ matrix.BUILD_TYPE }}/*
+        7z a -tzip ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.label }}-${{ matrix.BUILD_ARCH }}.zip ./bin/windows/${{ matrix.BUILD_TYPE }}/*
       shell: bash
     - name: Display structure of build files
       run: |
@@ -205,7 +205,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       with:
-        file: ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.QT_ARCH }}-${{ matrix.BUILD_ARCH }}.zip
+        file: ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.label }}-${{ matrix.BUILD_ARCH }}.zip
         tags: true
         draft: false
         overwrite: true
