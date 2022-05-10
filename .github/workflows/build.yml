@@ -186,7 +186,7 @@ jobs:
           dir bin\windows\${{ matrix.BUILD_TYPE }}
           windeployqt bin/windows/${{ matrix.BUILD_TYPE }}/resp.exe --qmldir src/qml
           dir bin\windows\${{ matrix.BUILD_TYPE }}
-          copy C:\hostedtoolcache\windows\Python\3.10.4\x64\python310.dll bin\windows\${{ matrix.BUILD_TYPE }}
+          copy C:\hostedtoolcache\windows\Python\3.10.4\x64\*.dll bin\windows\${{ matrix.BUILD_TYPE }}
       shell: cmd
 
     - name: Prepare release files on ${{matrix.label}}
