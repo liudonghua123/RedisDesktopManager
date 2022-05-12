@@ -249,7 +249,7 @@ jobs:
       run: |
           cp C:/hostedtoolcache/windows/Python/${{ env.PYTHON_VERSION }}/${{ matrix.BUILD_ARCH }}/*.dll bin/windows/${{ matrix.BUILD_TYPE }}/
           # package python/Lib as pythonNN.zip
-          7z a -tzip bin/windows/${{ matrix.BUILD_TYPE }}/python${{ matrix.PY_VERSION }}.zip C:/hostedtoolcache/windows/Python/${{ env.PYTHON_VERSION }}/${{ matrix.BUILD_ARCH }}/Lib/*
+          7z a -tzip bin/windows/${{ matrix.BUILD_TYPE }}/python${{ env.PY_VERSION }}.zip C:/hostedtoolcache/windows/Python/${{ env.PYTHON_VERSION }}/${{ matrix.BUILD_ARCH }}/Lib/*
       shell: bash
 
     - name: Prepare release files on ${{matrix.label}}
