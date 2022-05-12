@@ -56,7 +56,13 @@ SOURCES += $$SIMDJSONDIR/simdjson.cpp
 
 
 win32* {
-    ZLIBDIR = $$PWD/zlib-msvc14-x64.1.2.11.7795/build/native    
+    contains(QT_ARCH, i386) {
+        message("32-bit zlib used")
+        ZLIBDIR = $$PWD/zlib-msvc14-x86.1.2.11.7795/build/native
+    } else {
+        message("64-bit zlib used")
+        ZLIBDIR = $$PWD/zlib-msvc14-x64.1.2.11.7795/build/native 
+    }   
     INCLUDEPATH += $$ZLIBDIR/include
     LIBS += $$ZLIBDIR/lib_release/zlibstatic.lib $$LZ4DIR/build/cmake/Release/lz4.lib
     LIBS += $$ZSTDDIR/build/cmake/lib/Release/zstd_static.lib
