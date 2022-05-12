@@ -4,6 +4,8 @@ env:
   APP_NAME:       resp
   GIT_REF:        2022.3
   QT_VERSION:     5.15.2
+  PYTHON_VERSION: 3.10.4
+  PY_VERSION:     310
 
   # QT_ARCH:        win64_msvc2019_64
   # QT_ARCH_PATH:   msvc2019_64
@@ -25,21 +27,44 @@ jobs:
       matrix:
         os: [windows-latest]
         BUILD_TARGET: ['Visual Studio 16 2019', 'Visual Studio 17 2022']
+        QT_ARCH: ['win64_msvc2019_64', 'win32_msvc2019']
         include:
           - os: windows-latest
-            label: win64_msvc2019_64
+            label: win64_msvc2019
             QT_ARCH: win64_msvc2019_64
             QT_ARCH_PATH: msvc2019_64
             BUILD_TYPE: Release
             BUILD_ARCH: x64
             BUILD_TARGET: 'Visual Studio 16 2019'
+            VS_BUILD_ARCH: x64
+            BUILD_BITS: 64
           - os: windows-latest
-            label: win64_msvc2022_64
+            label: win64_msvc2022
             QT_ARCH: win64_msvc2019_64
             QT_ARCH_PATH: msvc2019_64
             BUILD_TYPE: Release
             BUILD_ARCH: x64
             BUILD_TARGET: 'Visual Studio 17 2022'
+            VS_BUILD_ARCH: x64
+            BUILD_BITS: 64
+          - os: windows-latest
+            label: win32_msvc2019
+            QT_ARCH: win32_msvc2019
+            QT_ARCH_PATH: msvc2019
+            BUILD_TYPE: Release
+            BUILD_ARCH: x86
+            BUILD_TARGET: 'Visual Studio 16 2019'
+            VS_BUILD_ARCH: win32
+            BUILD_BITS: 32
+          - os: windows-latest
+            label: win32_msvc2022
+            QT_ARCH: win32_msvc2019
+            QT_ARCH_PATH: msvc2019
+            BUILD_TYPE: Release
+            BUILD_ARCH: x86
+            BUILD_TARGET: 'Visual Studio 17 2022'
+            VS_BUILD_ARCH: win32
+            BUILD_BITS: 32
     runs-on: windows-latest
 
     steps:
@@ -47,6 +72,12 @@ jobs:
       uses: actions/checkout@v2.3.4
       with:
         submodules: 'recursive'
+
+    # setup python
+    - uses: actions/setup-python@v3
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        architecture: ${{ matrix.BUILD_ARCH }}
 
     # do not use cache here, the qt installation will install python 3.10 too.
     # - name: Cache Qt
@@ -82,21 +113,21 @@ jobs:
           echo $PATH
       shell: bash
 
-    - name: Fix qt path not append, cmd
-      run: |
-          echo %PATH%
-          echo ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin >> %GITHUB_PATH%
-          echo %GITHUB_PATH%
-          cat %GITHUB_PATH%
-      shell: cmd
-    - name: Fix qt path not append, powershell default
-      run: |
-          echo $env:PATH
-          echo ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
-          echo $env:GITHUB_PATH
-          cat $env:GITHUB_PATH
+    # - name: Fix qt path not append, cmd
+    #   run: |
+    #       echo %PATH%
+    #       echo ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin >> %GITHUB_PATH%
+    #       echo %GITHUB_PATH%
+    #       cat %GITHUB_PATH%
+    #   shell: cmd
+    # - name: Fix qt path not append, powershell default
+    #   run: |
+    #       echo $env:PATH
+    #       echo ${{github.workspace}}/Qt/${{ env.QT_VERSION }}/${{ matrix.QT_ARCH_PATH }}/bin | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+    #       echo $env:GITHUB_PATH
+    #       cat $env:GITHUB_PATH
 
-    - name: Check toolchains
+    - name: Check toolchains in cmd shell
       continue-on-error: true
       run: |
           echo %PATH%
@@ -105,7 +136,6 @@ jobs:
           python -V
           where jom qmake windeployqt 
       shell: cmd
-
     - name: Check toolchains in bash shell
       continue-on-error: true
       run: |
@@ -146,12 +176,13 @@ jobs:
 
     - name: Patch pyotherside.patch
       run: |
-          git apply .github/pyotherside.patch
+          git apply .github/pyotherside_win_${{ matrix.BUILD_ARCH }}.patch
           git diff 3rdparty/pyotherside.pri
     - name: Patch hiredis
       run: |
           cd 3rdparty/qredisclient/3rdparty/hiredis
           git apply ../hiredis-win.patch
+
     # see more details on the following links
     # https://docs.rdm.dev/en/latest/install/#build-on-windows
     # https://github.com/uglide/RedisDesktopManager/issues/5194
@@ -163,28 +194,28 @@ jobs:
     - name: Build lz4
       run: |
           cd 3rdparty/lz4/build/cmake
-          cmake -DLZ4_BUNDLED_MODE=ON -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake -DLZ4_BUNDLED_MODE=ON -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.VS_BUILD_ARCH }} .
           cmake --build . --config ${{ matrix.BUILD_TYPE }}
     - name: Build snappy
       run: |
           cd 3rdparty/snappy
-          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.VS_BUILD_ARCH }} .
           cmake --build . --config ${{ matrix.BUILD_TYPE }}
     - name: Build zstd
       run: |
           cd 3rdparty/zstd/build/cmake
-          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.VS_BUILD_ARCH }} .
           cmake --build . --config ${{ matrix.BUILD_TYPE }}
     - name: Build brotli
       run: |
           cd 3rdparty/brotli
-          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.BUILD_ARCH }} .
+          cmake -G "${{ matrix.BUILD_TARGET }}" -A ${{ matrix.VS_BUILD_ARCH }} .
           cmake --build . --config ${{ matrix.BUILD_TYPE }}
 
     - name: Build resp on visualstudio2019community
       if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 16 2019'
       run: |
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars${{ matrix.BUILD_BITS }}.bat"
           mkdir dist
           cd dist
           set
@@ -196,7 +227,7 @@ jobs:
     - name: Build resp on visualstudio2022enterprise builtin
       if: matrix.os == 'windows-latest' && matrix.BUILD_TARGET == 'Visual Studio 17 2022'
       run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars${{ matrix.BUILD_BITS }}.bat"
           mkdir dist
           cd dist
           set
@@ -216,9 +247,9 @@ jobs:
 
     - name: Add Python Dependences
       run: |
-          cp C:/hostedtoolcache/windows/Python/3.10.4/x64/*.dll bin/windows/${{ matrix.BUILD_TYPE }}/
+          cp C:/hostedtoolcache/windows/Python/${{ env.PYTHON_VERSION }}/${{ matrix.BUILD_ARCH }}/*.dll bin/windows/${{ matrix.BUILD_TYPE }}/
           # package python/Lib as pythonNN.zip
-          7z a -tzip bin/windows/${{ matrix.BUILD_TYPE }}/python310.zip C:/hostedtoolcache/windows/Python/3.10.4/x64/Lib/*
+          7z a -tzip bin/windows/${{ matrix.BUILD_TYPE }}/python${{ matrix.PY_VERSION }}.zip C:/hostedtoolcache/windows/Python/${{ env.PYTHON_VERSION }}/${{ matrix.BUILD_ARCH }}/Lib/*
       shell: bash
 
     - name: Prepare release files on ${{matrix.label}}
