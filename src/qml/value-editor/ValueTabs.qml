@@ -54,6 +54,7 @@ Repeater {
         property var tabButton
         property bool loadingModel: showLoader
         property variant keyModel: keyViewModel
+        property var addRowDialog
 
         onKeyModelChanged: {
             console.log("keyModel changed")
@@ -167,6 +168,7 @@ Repeater {
                         Layout.preferredWidth: isMultiRow ? 70 : 90
                         text: keyModel? keyType.toUpperCase() + ":" : "";
                         font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
                     }
 
                     BetterTextField {
@@ -174,46 +176,49 @@ Repeater {
                         Layout.fillWidth: true
                         text: keyModel? keyName : ""
                         readOnly: true
-                        objectName: "rdm_key_name_field"
-                    }
+                        objectName: "rdm_key_name_field"                    
 
-                    BetterButton {
-                        Layout.preferredWidth: 98
+                        ImageButton {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 5
+                            anchors.verticalCenter: parent.verticalCenter
 
-                        text: qsTranslate("RESP","Rename key")
-                        objectName: "rdm_key_rename_btn"
+                            iconSource: PlatformUtils.getThemeIcon("cleanup.svg")
+                            tooltip: qsTranslate("RESP","Rename key")
+                            objectName: "rdm_key_rename_btn"
 
-                        onClicked: renameConfirmation.open()
+                            onClicked: renameConfirmation.open()
 
-                        BetterDialog {
-                            id: renameConfirmation
-                            title: qsTranslate("RESP","Rename key")
+                            BetterDialog {
+                                id: renameConfirmation
+                                title: qsTranslate("RESP","Rename key")
 
-                            width: 520
+                                width: 520
 
-                            RowLayout {
-                                implicitWidth: 500
-                                implicitHeight: 100
-                                width: 500
+                                RowLayout {
+                                    implicitWidth: 500
+                                    implicitHeight: 100
+                                    width: 500
 
-                                BetterLabel { text: qsTranslate("RESP","New name:") }
-                                BetterTextField {
-                                    id: newKeyName;
-                                    Layout.fillWidth: true;
-                                    objectName: "rdm_rename_key_field"
-                                    text: keyModel? keyName : ""
-                                }
-                            }
-
-                            onAccepted: {
-                                if (newKeyName.text.length == 0) {
-                                    return open()
+                                    BetterLabel { text: qsTranslate("RESP","New name:") }
+                                    BetterTextField {
+                                        id: newKeyName;
+                                        Layout.fillWidth: true;
+                                        objectName: "rdm_rename_key_field"
+                                        text: keyModel? keyName : ""
+                                    }
                                 }
 
-                                keyTab.keyModel.renameKey(newKeyName.text)
-                            }
+                                onAccepted: {
+                                    if (newKeyName.text.length == 0) {
+                                        return open()
+                                    }
 
-                            visible: false
+                                    keyTab.keyModel.renameKey(newKeyName.text)
+                                }
+
+                                visible: false
+                            }
                         }
                     }
 
@@ -223,10 +228,11 @@ Repeater {
                     }
 
                     BetterButton {
-                        Layout.preferredWidth: 98
+                        Layout.preferredWidth: isMultiRow? 92 : 98
 
                         text: qsTranslate("RESP","TTL:") + keyTtl
                         objectName: "rdm_key_ttl_value"
+                        tooltip: keyTtl
 
                         BetterDialog {
                             id: setTTLConfirmation
@@ -424,7 +430,7 @@ Repeater {
 
                                     property int currentRow: -1
 
-                                    source: keyTab.keyModel? Editor.getEditorByTypeString(keyType) : ""
+                                    source: keyTab.keyModel? Editor.getEditorByTypeString(keyType, false) : ""
 
                                     function loadRowValue(row) {
                                         console.log("loading row value", row)
@@ -442,11 +448,7 @@ Repeater {
                                     function clear() {
                                         if (valueEditor.item) {
                                             currentRow = -1
-
-                                            if (valueEditor.item.keyType !== undefined) {
-                                                valueEditor.item.keyType = keyType
-                                            }
-
+                                            valueEditor.item.keyType = Qt.binding(function() { return keyType });
                                             valueEditor.item.reset()
                                         }
                                     }

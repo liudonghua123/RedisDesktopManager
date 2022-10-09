@@ -12,8 +12,7 @@ BetterButton {
     property alias imgSource: img.source
     property alias iconSource: img.source
     property bool showBorder: false
-
-    property string tooltip
+    property bool imgStickTop: false
 
     MouseArea {
             id: mouseArea
@@ -24,13 +23,24 @@ BetterButton {
 
     Image {
         id: img
-        anchors.centerIn: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: root.text || root.imgStickTop ? null : parent.verticalCenter
         source: PlatformUtils.getThemeIcon("clear.svg")
         width: 18
         height: 18
         sourceSize.width: width * 2
         sourceSize.height: height * 2
         opacity: root.enabled? 1.0: 0.8
+    }
+
+    contentItem: Text {
+      text: root.text
+      font: root.font
+      opacity: enabled ? 1.0 : 0.8
+      color: root.down ? sysPalette.highlightedText : enabled ? sysPalette.text : disabledSysPalette.text
+      horizontalAlignment: Text.AlignHCenter
+      verticalAlignment: root.imgSource != "" ? Text.AlignBottom : Text.AlignVCenter
+      elide: Text.ElideRight
     }
 
     background: Rectangle {
@@ -41,10 +51,6 @@ BetterButton {
         border.width: root.hovered ? 1 : root.showBorder ? 1 : 0
         border.color: root.hovered? sysPalette.highlight : sysPalette.mid
         radius: 5
-   }
-
-   BetterToolTip {
-       title: root.tooltip
    }
 }
 

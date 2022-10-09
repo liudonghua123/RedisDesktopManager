@@ -18,8 +18,8 @@ BetterDialog {
 
     contentItem: Rectangle {
         id: dialogRoot
-        implicitWidth: 950
-        implicitHeight: PlatformUtils.isOSX() && qmlUtils.isAppStoreBuild()? 600 : 650
+        implicitWidth:  PlatformUtils.isScalingDisabled() ? 1100 : 950
+        implicitHeight: PlatformUtils.isScalingDisabled() ? 700 : 550
 
         color: sysPalette.base
 
@@ -38,7 +38,7 @@ BetterDialog {
                     id: innerLayout
                     width: globalSettingsScrollView.width - 25
                     height: (dialogRoot.height - 50 > implicitHeight) ? dialogRoot.height - 50 : implicitHeight
-                    spacing: 10
+                    spacing: PlatformUtils.isScalingDisabled()? 20 : 10
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -59,8 +59,8 @@ BetterDialog {
                         rows: 3
                         flow: GridLayout.TopToBottom
                         Layout.fillWidth: true
-                        rowSpacing: 10
-                        columnSpacing: 15
+                        rowSpacing: PlatformUtils.isScalingDisabled() ? 20 : 10
+                        columnSpacing: PlatformUtils.isScalingDisabled() ? 20 : 15
 
                         ComboboxOption {
                             id: appLang
@@ -68,7 +68,7 @@ BetterDialog {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 30
 
-                            model: ["system", "en_US", "zh_CN", "zh_TW", "ru_RU", "es_ES", "ja_JP"]
+                            model: ["system", "en_US", "zh_CN", "zh_TW", "uk_UA", "es_ES", "ja_JP"]
                             value: "system"
                             label: qsTranslate("RESP","Language")
                             onValueChanged: root.restartRequired = true
@@ -160,9 +160,8 @@ BetterDialog {
                         columns: 2
                         rows: 2
                         flow: GridLayout.TopToBottom
-                        rowSpacing: 10
-                        columnSpacing: 15
-
+                        rowSpacing: PlatformUtils.isScalingDisabled() ? 20 : 10
+                        columnSpacing: PlatformUtils.isScalingDisabled() ? 20 : 15
 
                         ComboboxOption {
                             id: valueEditorFont
@@ -202,6 +201,17 @@ BetterDialog {
                             description: qsTranslate("RESP", "Size in bytes")
                         }
 
+                        IntOption {
+                            id: valueEditorPageSizeControl
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 30
+
+                            min: 10
+                            max: 10000
+                            value: 100
+                            label: qsTranslate("RESP","Maximum amount of items per page")
+                        }
                     }
 
                     SettingsGroupTitle {
@@ -211,10 +221,10 @@ BetterDialog {
 
                     GridLayout {
                         columns: 2
-                        rows: 3
+                        rows: 4
                         flow: GridLayout.TopToBottom
-                        rowSpacing: 10
-                        columnSpacing: 20
+                        rowSpacing: PlatformUtils.isScalingDisabled() ? 20 : 10
+                        columnSpacing: PlatformUtils.isScalingDisabled() ? 20 : 15
 
                         BoolOption {
                             id: nsOnTop
@@ -242,9 +252,22 @@ BetterDialog {
 
                             Layout.fillWidth: true
                             Layout.preferredHeight: 30
+                            Layout.rowSpan: 2
 
                             value: true
                             label: qsTranslate("RESP","Show only last part for namespaced keys")
+                        }
+
+                        IntOption {
+                            id: scanCommandLimit
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 30
+
+                            min: 1000
+                            max: 500000
+                            value: 10000
+                            label: qsTranslate("RESP","Limit for SCAN command")
                         }
 
                         IntOption {
@@ -282,63 +305,9 @@ BetterDialog {
                             value: 10
                             label: qsTranslate("RESP","Live update interval (in seconds)")
                         }
-
-                    }
-
-                    RowLayout {
-                        Layout.topMargin: 10
-
-                        SettingsGroupTitle {
-                            visible: !(PlatformUtils.isOSX() && qmlUtils.isAppStoreBuild())
-                            text: qsTranslate("RESP","External Value View Formatters")
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
-                        }
-
-                        Text {
-                            visible: !(PlatformUtils.isOSX() && qmlUtils.isAppStoreBuild())
-                            text: formattersManager? qsTranslate("RESP","Formatters path: %0").arg(formattersManager.formattersPath()) : ""
-                            font.pixelSize: 12
-                            color: "grey"
-                        }
-                    }
-
-                    LC.TableView {
-                        id: formattersTable
-                        visible: !(PlatformUtils.isOSX() && qmlUtils.isAppStoreBuild())
-
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.preferredHeight: 100
-                        verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
-
-                        LC.TableViewColumn {
-                            role: "name"
-                            title: qsTranslate("RESP","Name")
-                        }
-                        LC.TableViewColumn {
-                            role: "version"
-                            width: 75
-                            title: qsTranslate("RESP","Version")
-                        }
-                        LC.TableViewColumn {
-                            role: "cmd"
-                            title: qsTranslate("RESP","Command")
-                        }
-
-                        LC.TableViewColumn {
-                            width: 250
-                            role: "description"
-                            title: qsTranslate("RESP","Description")
-                        }
-
-                        model: formattersManager
                     }
 
                     Item {
-                        visible: !formattersTable.visible
                         Layout.fillHeight: true
                     }
 
@@ -349,7 +318,7 @@ BetterDialog {
                         BetterButton {
                             text: qsTranslate("RESP","OK")
                             onClicked: {
-                                if (root.restartRequired === true) {
+                                if (!PlatformUtils.isOSX() && root.restartRequired === true) {
                                     // restart app
                                     Qt.exit(1001)
                                 }
@@ -383,11 +352,13 @@ BetterDialog {
         property alias valueEditorFont: valueEditorFont.value
         property alias valueEditorFontSize: valueEditorFontSize.value
         property alias valueSizeLimit: valueSizeLimit.value
+        property alias valueEditorPageSize: valueEditorPageSizeControl.value
         property alias locale: appLang.value
         property alias darkModeOn: darkModeLinux.value
         property alias darkMode: darkModeWindows.value
         property alias useSystemProxy: systemProxy.value
         property alias disableProxyForRedisConnections: disableProxyForRedisConnections.value
+        property alias scanLimit: scanCommandLimit.value
     }
 
     Settings {

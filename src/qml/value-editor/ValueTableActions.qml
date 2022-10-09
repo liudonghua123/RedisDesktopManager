@@ -51,11 +51,12 @@ ColumnLayout {
                         property int currentRow: -1
                         objectName: "rdm_add_row_dialog"
 
-                        source: keyTab.keyModel ? Editor.getEditorByTypeString(keyType) : ""
+                        source: keyTab.keyModel ? Editor.getEditorByTypeString(keyType, true) : ""
 
                         onLoaded: {
-                            item.state = "add"
+                            item.state = "add"                            
                             item.initEmpty()
+                            keyTab.addRowDialog = addRowDialog
                         }
                     }
                 }
