@@ -61,15 +61,15 @@ ToolBar {
                     onAccepted: connectionsManager.saveConnectionsConfigToFile(qmlUtils.getPathFromUrl(file))
                 }
 
-                Menu {
+                BetterMenu {
                     id: menu
 
-                    MenuItem {
+                    BetterMenuItem {
                         objectName: "rdm_import_connections_btn"
                         text: qsTranslate("RESP","Import Connections")
                         onTriggered: importConnectionsDialog.open()
                     }
-                    MenuItem {
+                    BetterMenuItem {
                         objectName: "rdm_export_connections_btn"
                         text: qsTranslate("RESP","Export Connections")
                         onTriggered: exportConnectionsDialog.open()
@@ -136,6 +136,16 @@ ToolBar {
             text: qsTranslate("RESP","Log")
 
             onClicked: logDrawer.open()
+        }
+
+        BetterButton {
+            objectName: "rdm_extension_server_settings_btn"
+            iconSource: PlatformUtils.getThemeIcon("server_2.svg")
+            text: qsTranslate("RESP","Extension Server")
+
+            onClicked: {
+                extServerSettingsDialog.item.open()
+            }
         }
 
         BetterButton {

@@ -28,24 +28,26 @@ class Model : public TabModel {
 
   QString getName() const override;
 
-  QVariantMap serverInfo();
+  QVariantMap serverInfo() const;
 
-  QVariant slowLog();
+  QVariant slowLog() const;
 
-  QVariant clients();
+  QVariant clients() const;
 
-  QVariant pubSubChannels();
+  QVariant pubSubChannels() const;
 
-  bool refreshSlowLog();
+  bool refreshSlowLog() const;
   void setRefreshSlowLog(bool v);
 
-  bool refreshClients();
+  bool refreshClients() const;
   void setRefreshClients(bool v);
 
-  bool refreshPubSubMonitor();
+  bool refreshPubSubMonitor() const;
   void setRefreshPubSubMonitor(bool v);
 
   Q_INVOKABLE void subscribeToChannel(const QString& c);
+  Q_INVOKABLE void monitorCommands();
+  Q_INVOKABLE void openTerminal();
 
  signals:
   void serverInfoChanged();
@@ -53,10 +55,17 @@ class Model : public TabModel {
   void clientsChanged();
   void pubSubChannelsChanged();
   void openConsoleTerminal(QSharedPointer<RedisClient::Connection> c,
-                           int db, QList<QByteArray> cmd);
+                           int db, bool inNewTab, QList<QByteArray> cmd);
 
  protected:
   void cmdErrorHander(const QString& err);
+
+ protected slots:
+  void srvInfoCallback();
+
+  void slowLogCallback();
+
+  void clientsCallback();
 
  private:
   QTimer m_serverInfoUpdateTimer;

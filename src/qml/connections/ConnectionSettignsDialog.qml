@@ -111,13 +111,13 @@ BetterDialog {
 
     contentItem: Rectangle {
         color: sysPalette.base
-        implicitWidth: 650
+        implicitWidth: PlatformUtils.isScalingDisabled() ? 900 : 650
         implicitHeight: {
             if (screen.devicePixelRatio === 1) {
                 return connectionSettingsTabBar.implicitHeight
                         + sshSettingsGrid.implicitHeight + 350
             } else {
-                return 600
+                return 610
             }
         }
         Control {
@@ -1082,9 +1082,6 @@ BetterDialog {
             }
             OkDialogOverlay {
                 id: dialog_notification
-
-                x: (root.width - width) / 2
-                y: (root.height - height) / 3
 
                 objectName: "rdm_qml_connection_settings_error_dialog"
                 visible: false                                              

@@ -19,6 +19,7 @@ Item
     property bool showSaveBtn: false
     property bool showFormatters: true
     property bool showOnlyRWformatters: false
+    property bool showValueSize: true
     property string fieldLabel: qsTranslate("RESP","Value") + ":"
     property bool isEdited: false
     property var value    
@@ -31,6 +32,14 @@ Item
 
     property var __formatterCombobox: formatterSelector
     property var __textView: textView
+
+    function __getFormattingContext()
+    {
+        return {
+            "redis-key-name": root.parent.state === "new"? newKeyName.value : keyName,
+            "redis-key-type": keyType,
+        }
+    }
 
     function initEmpty() {
         // init editor with empty model
@@ -76,15 +85,10 @@ Item
         function process(formattedValue) {
             var formatter = valueFormattersModel.get(formatterSelector.currentIndex)
 
-             formatter.getRaw(formattedValue, function (error, raw) {
-                 var compressed;
-                 if (formatter.type === "external") {
-                    compressed = compress(qmlUtils.b64toByteArray(raw))
-                 } else {
-                    compressed = compress(raw)
-                 }
+             formatter.getRaw(formattedValue, function (error, raw) {                 
+                 var compressed = compress(raw);
                  return callback(error, compressed)
-             })
+             }, __getFormattingContext())
         }
 
         if (textView.format === "json") {
@@ -94,7 +98,7 @@ Item
                 }
 
                 process(plainText)
-            })
+            }, __getFormattingContext())
         } else {
             process(textView.model.getText())
         }
@@ -197,14 +201,16 @@ Item
             var cFormatter = formatterSelector.model.get(expectedFormatter)
 
             return cFormatter.isValid(root.value, function (isValid) {
-                if (isValid) {
+                var compressionMethod = qmlUtils.isCompressed(root.value);
+
+                if (isValid || compressionMethod > 0) {
                     formatterSelector._select(formatterOverride)
                     continueFormatting(false)
                 } else {
                     console.log("Formatter", formatterOverride, " cannot decode value. Fallback to guessing...")
                     continueFormatting(true)
                 }
-            })
+            }, __getFormattingContext())
         } else {
             continueFormatting(false)
         }
@@ -237,7 +243,7 @@ Item
                         formatterSelector.currentIndex = candidates[index]
                         callback()
                     }
-                })
+                }, __getFormattingContext())
 
                 if (formatterSelector.currentIndex !== 0)
                     break
@@ -268,7 +274,7 @@ Item
             if (error || (!formatted && root.value)) {
                 if (formatted) {
                     textView.model = qmlUtils.wrapLargeText(formatted)
-                } else {
+                } else if (!error) {
                     formatterSelector.currentIndex = valueFormattersModel.guessFormatter(root.value, isBin)
                     return _loadFormatter(isBin)
                 }
@@ -289,7 +295,11 @@ Item
                 return
             }
 
-            textView.model = qmlUtils.wrapLargeText(formatted)
+            if (format === "image") {
+                imageView.source = formatted;
+            } else {
+                textView.model = qmlUtils.wrapLargeText(formatted)
+            }
             textView.readOnly = isReadOnly
             textView.format = format
             root.isEdited = false
@@ -306,11 +316,11 @@ Item
                     } else {
                         processFormattingResult(jsonError, plainText, isReadOnly, format)
                     }
-                })
+                }, __getFormattingContext())
             } else {
                 processFormattingResult(error, formatted, isReadOnly, format)
             }
-        })
+        }, __getFormattingContext())
     }
 
     function reset() {
@@ -352,6 +362,7 @@ Item
                 readOnly: true;
                 selectByMouse: true
                 color: "#ccc"
+                visible: showValueSize
             }
             BetterLabel { id: binaryFlag; text: qsTranslate("RESP","[Binary]"); visible: false; color: "green"; }
             Item { Layout.fillWidth: true }
@@ -404,7 +415,8 @@ Item
                 textRole: "text"
 
                 visible: {
-                    return binaryFlag.visible && qmlUtils.binaryStringLength(root.value) <= appSettings.valueSizeLimit
+                    console.log("keyType:", keyType)
+                    return binaryFlag.visible && keyType != "hyperloglog" && qmlUtils.binaryStringLength(root.value) <= appSettings.valueSizeLimit
                             || root.valueCompression > 0
                 }
 
@@ -496,33 +508,30 @@ Item
                 color: "red"
             }
 
+            BetterButton {
+                iconSource: PlatformUtils.getThemeIcon("add.svg")
+                Layout.alignment: Qt.AlignHCenter
+
+                text: qsTranslate("RESP","Add Element");
+                visible: (keyType === "hyperloglog"
+                          || keyType === "bf"
+                          || keyType === "cf")
+
+                onClicked: {
+                    keyTab.addRowDialog.open()
+                }
+            }
+
             RowLayout {
                 id: valueEditorToolBar
                 Layout.preferredWidth: isMultiRow ? 200 : 208
                 Layout.maximumWidth: isMultiRow ? 200 : 208
 
-                visible: showToolBar                
+                visible: showToolBar
 
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 98
-
-                    ImageButton {
-                        iconSource: PlatformUtils.getThemeIcon("add.svg")
-                        implicitWidth: imgBtnWidth
-                        implicitHeight: imgBtnHeight
-                        imgWidth: imgBtnWidth
-                        imgHeight: imgBtnHeight
-
-                        Layout.alignment: Qt.AlignHCenter
-
-                        tooltip: qsTranslate("RESP","Add Element to HLL");
-                        visible: keyType === "hyperloglog"
-
-                        onClicked: {
-                            addRowDialog.open()
-                        }
-                    }
 
                     ImageButton {
                         id: copyValueToClipboardBtn
@@ -803,6 +812,7 @@ Item
                 id: valueScrollView
                 anchors.fill: parent
                 anchors.margins: 5
+                visible: textView.format !== "image"
 
                 ScrollBar.vertical.policy: ScrollBar.AlwaysOn
                 ScrollBar.vertical.minimumSize: 0.05
@@ -813,7 +823,7 @@ Item
                     id: textView
                     anchors.fill: parent
                     cacheBuffer: 4
-                    highlightMoveDuration: 0                                       
+                    highlightMoveDuration: 0                    
 
                     Keys.onPressed: {
                        if (event.matches(StandardKey.Find)) {
@@ -863,8 +873,16 @@ Item
                                 Keys.forwardTo: [textView]
                             }
                         }
-                }
+                }  
             }
+
+            Image {
+                id: imageView
+                anchors.fill: parent
+                fillMode: Image.PreserveAspectFit
+                visible: textView.format === "image"
+            }
+
         }
 
         BetterLabel {

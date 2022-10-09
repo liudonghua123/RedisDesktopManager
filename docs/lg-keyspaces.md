@@ -1,18 +1,26 @@
 # Working with large keyspaces
 
+By default, RESP.app uses `*` (wildcard glob-style pattern) in  `SCAN` command to load all keys from the selected database. It’s simple and user-friendly for cases when you have only a couple of thousands keys. But for production redis-servers with millions of keys it leads to a huge amount of time needed to load keys in RESP.app.
+On this page you will find different approaches how to work with large Redis keyspaces efficiently. 
+
+## Increase limit for `SCAN` command
+RESP.app limits amount of keys that should be scanned by Redis to `10000`. If you have more than 100K keys in Redis it's recommended to increase this limit to
+`50000` or `100000`. 
+
+> !!! warning "Be careful!"
+    High scanning limit may affect your Redis performance!
+
+To increase this limit click on the Settings button in top right corner for the main window and change value for `Limit for SCAN command` setting.
+
 ## Use specific `SCAN` filter to reduce loaded amount of keys
-
-
-By default RESP.app uses `*` (wildcard glob-style pattern) in  `SCAN` command to load all keys from the selected database. It’s simple and user-friendly for cases when you have only a couple of thousands keys. But for production redis-servers with millions of keys it leads to a huge amount of time needed to load keys in RESP.app. 
-
-However, while working with production redis-servers that contain millions of keys users have to wait for a long time till all keys are loaded. 
 
 Consider using more specific  filters for `SCAN` in order to speed up keys loading and reduce memory footprint 
 
 1. Right click on database and click on Filter button <br> <img width="250" src="https://user-images.githubusercontent.com/1655867/91542521-aa18c300-e926-11ea-8f09-4a0322d0f9ee.png">
 2. Enter glob-style pattern and press apply button <br> <img width="250" src="https://user-images.githubusercontent.com/1655867/91542549-b4d35800-e926-11ea-9920-ca0ad8701c56.png">
 
-More details about `SCAN` filter syntax you can find in Redis documentation https://redis.io/commands/scan#the-match-option
+> !!! note
+    More details about `SCAN` filter syntax you can find in Redis documentation [https://redis.io/commands/scan#the-match-option]()
 
 
 Default `SCAN` filter can be changed in connection settings on “Advanced Settings” tab:
@@ -33,5 +41,5 @@ Using namespaced keys is also important for loading huge keyspaces in RESP.app. 
 
 Default namespace separator can be changed in connection settings on “Advanced Settings” tab.
 
-More tips about Redis keys naming you can find in this tutorial https://redis.io/topics/data-types-intro#redis-keys
+More tips about Redis keys naming you can find in this tutorial [https://redis.io/topics/data-types-intro#redis-keys]()
 
