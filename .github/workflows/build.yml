@@ -2,7 +2,6 @@ name: Run build
 
 env:
   APP_NAME:       resp
-  GIT_REF:        2022.3
   QT_VERSION:     5.15.2
   PYTHON_VERSION: 3.10.4
   PY_VERSION:     310
@@ -256,7 +255,7 @@ jobs:
       continue-on-error: true
       if: matrix.os == 'windows-latest'
       run: |
-        7z a -tzip ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.label }}-${{ matrix.BUILD_ARCH }}.zip ./bin/windows/${{ matrix.BUILD_TYPE }}/*
+        7z a -tzip ${{env.APP_NAME}}-${{ github.ref_name }}-${{ matrix.label }}-${{ matrix.BUILD_ARCH }}.zip ./bin/windows/${{ matrix.BUILD_TYPE }}/*
       shell: bash
     - name: Display structure of build files
       run: |
@@ -268,7 +267,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       with:
-        file: ${{env.APP_NAME}}-${{ env.GIT_REF }}-${{ matrix.label }}-${{ matrix.BUILD_ARCH }}.zip
+        file: ${{env.APP_NAME}}-${{ github.ref_name }}-${{ matrix.label }}-${{ matrix.BUILD_ARCH }}.zip
         tags: true
         draft: false
         overwrite: true
